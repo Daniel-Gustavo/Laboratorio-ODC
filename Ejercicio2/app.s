@@ -4,22 +4,17 @@
 	.equ GPIO_BASE,    0x3f200000
 	.equ GPIO_GPFSEL0, 0x00
 	.equ GPIO_GPLEV0,  0x34
-
 	.globl main
 
 main:
-	// x0 contiene la direccion base del framebuffer
-	mov x20, x0 // Guarda la dirección base del framebuffer en x20
-	//---------------- CODE HERE ------------------------------------
-
+	mov x20, x0
 	mov x19, SCREEN_HEIGH
-	lsr x19, x19, #2              // Divide SCREEN_HEIGH assigned on x19 by 4
-
+	lsr x19, x19, #2
 	mov x27, #0
 
 ///////////////////////////coordenadas iniciales///////////////////////////
-	mov x17, #100     // coordenada inicial x del sol
-	mov x18, #640	  // coordenada inicial x de la luna
+	mov x17, #-90    // coordenada inicial x del sol
+	mov x18, #680	  // coordenada inicial x de la luna
 	mov x21, #180    // coordenada x inicial auto
 	mov x22, #50	 // coordenada y inicial auto
 	mov x23, x21
@@ -32,71 +27,89 @@ loop1:
 	mov x1, SCREEN_WIDTH         // X Size
 
 ///////////////////////////llamar objetos///////////////////////////
-
 cycle_check: 
 	//cielo
 	capa_1:                      // mientras menor  la capa mas al fondo se encuentra
 	bl color_fondo
 
-	// cosas entre piso y luna
+
 	capa_2:
-	mov x3, #100                 // Radio del circulo
+//-----------------------SOL--------------------------------------
+	mov x3, #70                  // Radio del circulo
 	mul x4, x3, x3	 
 	mov x5, x17				     // Coordenada X (centro del circulo)
-	mov x6, #300			     // Coordenada Y
+	mov x6, #340			     // Coordenada Y
 	bl sol
-	
-	mov x3, #100                 // Radio del circulo
+
+//-----------------------LUNA--------------------------------------	
+	mov x3, #50                 // Radio del circulo
 	mul x4, x3, x3	 
 	mov x5, x18			         // Coordenada X (centro del circulo)
-	mov x6, #300			     // Coordenada Y
+	mov x6, #370			     // Coordenada Y
 	bl luna
 
-
-	//piso
 	capa_3:
+//------------------------PISO--------------------------------------
 	cmp x2, x19
 	b.le color_piso
 
-
 	capa_4:
 
-	// rueda
-	//rueda derecha
+//------------------------rueda------------------------------------
+    //rueda derecha
 	add x5, x21, #20 
 	sub x6, x22, #40
-	mov x3, #50
+	mov x3, #70
 	mov x4, #50
-	bl cuadrado2
+	bl ruedas
 
 	//rueda izquierda
-	add x5, x21, #230
+	add x5, x21, #210
 	sub x6, x22, #40
-	mov x3, #50
+	mov x3, #70
 	mov x4, #50
-	bl cuadrado2
+	bl ruedas
 	
-	// rectangulo
+//------------parte baja del auto------------------
 	mov x5, x21	     	       // coordenada x (esquina derecha)
 	mov x6, x22			       // coordenada y (esqueina inferior)
 	mov x3, #300               // rectangle Length
 	mov x4, #120			   // rectangle Height
 	bl cuadrado                // imprime un cuadrado con los datos dados
 
+//------------parte alta del auto--------------------
+//contorno rojo del vidrio
+	mov x5, x21	     	       // coordenada x (esquina derecha)
+	mov x6, x22			       // coordenada y (esqueina inferior)
+	mov x3, #260               // rectangle Length
+	mov x4, #80			       // rectangle Height
+	add x5, x21, #20
+	add x6, x22, #118
+	bl cuadrado                // imprime un cuadrado con los datos dados
 
-	// llamar luz derecha
+// vidrio parte alta del auto
+	mov x5, x21	     	       // coordenada x (esquina derecha)
+	mov x6, x22			       // coordenada y (esqueina inferior)
+	mov x3, #240               // rectangle Length
+	mov x4, #75			       // rectangle Height
+	add x5, x21, #30
+	add x6, x22, #118
+	bl frente_auto             // imprime un cuadrado con los datos dados
+
+//-------------luces del auto----------------------------
+// llamar luz derecha
 	mov x3, #25               // Radio del circulo
 	mul x4, x3, x3	 
-	add x5, x21, #45 		       // Coordenada X (centro del circulo)
-	add x6, x22, #70 		       // Coordenada Y
-	bl rueda                   // imprime un circulo con los datos dados
+	add x5, x21, #45 		  // Coordenada X (centro del circulo)
+	add x6, x22, #70 		  // Coordenada Y
+	bl contornoluz            // imprime un circulo con los datos dados
 
-	// llamar luz izquierda
+// llamar luz izquierda
 	mov x3, #25               // Radio del circulo
 	mul x4, x3, x3	 
-	add x5, x21, #255		       // Coordenada X (centro del circulo)
-	add x6, x22, #70		       // Coordenada Y
-	bl rueda                   // imprime un circulo con los datos dados
+	add x5, x21, #255		  // Coordenada X (centro del circulo)
+	add x6, x22, #70		  // Coordenada Y
+	bl contornoluz            // imprime un circulo con los datos dados
 
 ///////////////////////////ciclo///////////////////////////	
 	cycle:
@@ -153,22 +166,21 @@ cycle_check:
 	add x18, x18, #3
 	bl salto_luna_check
 
-	add x17, x17, #2
-	cmp x17, #1280
+	add x17, x17, #3
+	cmp x17, #1300
 	b.lt repeat
-	sub x17, x17, #1380
+	sub x17, x17, #1350
 	b repeat
 	cbz x2, done
 	
 	salto_luna_check:
-		cmp x18, #1280
-		b.ge salto_luna
-		ret
-	salto_luna:
-		sub x18, x18,#1380
-		ret
-		
+	cmp x18, #1350
+	b.ge salto_luna
+	ret
 
+	salto_luna:
+	sub x18, x18,#1350
+	ret
 
 ///////////////////////////objetos///////////////////////////
 	sol:                
@@ -191,27 +203,19 @@ cycle_check:
 		b.ge color_luna
 		ret
 
-	diagonal:
-		sub x9, x5, x1
-		sub x11, x6, x2
-		lsl x9, x9, #2
-		sub x11, x9, x11
-		cmp x11, xzr
-		b.le color_auto
-		ret
-
-	rueda:                      
+//-----------LUCES-------------------
+	contornoluz:                      
 		sub x9, x5, x1
 		sub x11, x6, x2
 		mul x9, x9, x9
 		mul x11, x11, x11
 		add x9, x9, x11
 		cmp x4, x9
-		b.ge goma
+		b.ge luz
 		ret
 
-	goma:
-		sub x3, x3, #5               // Radio del circulo
+	luz:
+		sub x3, x3, #5 // Radio del circulo
 		mul x4, x3, x3	
 		sub x9, x5, x1
 		sub x11, x6, x2
@@ -220,7 +224,7 @@ cycle_check:
 		add x9, x9, x11
 		cmp x4, x9
 		b.ge color_vidrio
-		b.le color_goma
+		b.le color_negro
 
 	cuadrado: 
 		sub x9, x5, x1
@@ -242,24 +246,44 @@ cycle_check:
 		end_cuadrado:
 		ret
 
-	cuadrado2: 
+	ruedas: 
 		sub x9, x5, x1
 		sub x11, x6, x2
 		cmp x9, xzr
-		b.ge end_cuadrado2
+		b.ge end_ruedas
 		cmp x11, xzr
-		b.ge end_cuadrado2
+		b.ge end_ruedas
 		add x5, x5, x3
 		add x6, x6, x4
 		sub x9, x11, x2
 		sub x9, x5, x1
 		sub x11, x6, x2
 		cmp x9, xzr
-		b.le end_cuadrado2
+		b.le end_ruedas
 		cmp x11, xzr
-		b.le end_cuadrado2
-		b.ge color_rueda
-		end_cuadrado2:
+		b.le end_ruedas
+		b.ge color_negro
+		end_ruedas:
+		ret
+
+	frente_auto: 
+		sub x9, x5, x1
+		sub x11, x6, x2
+		cmp x9, xzr
+		b.ge end_frente_auto
+		cmp x11, xzr
+		b.ge end_frente_auto
+		add x5, x5, x3
+		add x6, x6, x4
+		sub x9, x11, x2
+		sub x9, x5, x1
+		sub x11, x6, x2
+		cmp x9, xzr
+		b.le end_frente_auto
+		cmp x11, xzr
+		b.le end_frente_auto
+		b.ge color_negro
+		end_frente_auto:
 		ret
 
 
@@ -285,6 +309,11 @@ color_vidrio:
 		b.GT blue
 		ret
 
+	color_luna:
+		movz x10, 0x00A2, lsl 16
+		movk x10, 0xABB1, lsl 00     // w10 = -color gris (0xA2ABB1)
+		ret
+
 	color_piso:                    
 		movz x10, 0x0000, lsl 16
 		movk x10, 0xE600, lsl 00    // w10 = -color verde (0x00E600)
@@ -305,5 +334,6 @@ color_vidrio:
 		movk x10, 0x0000, lsl 00     // w10 = -color rojo (0xa00000)
 		ret
 
-done: InfLoop: b InfLoop
+done:
+ InfLoop: b InfLoop
 	
